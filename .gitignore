@@ -1,0 +1,8 @@
+# pycharm
+.idea/
+
+# snapshots
+snapshots/
+
+# pyc
+*.pyc
