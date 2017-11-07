@@ -61,20 +61,23 @@ def get_arguments():
     return parser.parse_args()
 
 
-def load_model(saver, sess, ckpt_path):
+def load_model(loader, sess, ckpt_path):
     checkpoint = tf.train.get_checkpoint_state(ckpt_path)
     if checkpoint and checkpoint.model_checkpoint_path:
-        saver.restore(sess, ckpt_path)
+        print checkpoint.model_checkpoint_path
+        loader.restore(sess, checkpoint.model_checkpoint_path)
         print("Restored model parameters from {}".format(ckpt_path))
+    else:
+        print 'Did not load model'
 
 
-def save_model(saver, sess, logdir, step):
+def save_model(saver, sess, logdir, global_step):
     model_name = 'model.ckpt'
     checkpoint_path = os.path.join(logdir, model_name)
     if not os.path.exists(logdir):
         os.makedirs(logdir)
-    saver.save(sess, checkpoint_path, global_step=step)
-    print('The checkpoint has been created for step {}'.format(step))
+    saver.save(sess, checkpoint_path, global_step=global_step)
+    print('The checkpoint has been created for step {}'.format(sess.run(global_step)))
 
 
 def main():
@@ -148,6 +151,7 @@ def main():
     # Define loss and optimization parameters
     base_lr = tf.constant(args.learning_rate, tf.float64)
     global_step = tf.Variable(0, trainable=False, name='global_step')
+    increment_step = tf.assign(global_step, global_step + 1)
     learning_rate = tf.scalar_mul(base_lr, tf.pow((1 - global_step / args.num_steps), args.power))
 
     opt_conv = tf.train.MomentumOptimizer(learning_rate, args.momentum)
@@ -163,15 +167,15 @@ def main():
     train_op_fc_w = opt_fc_w.apply_gradients(zip(grads_fc_w, fc_w_trainable))
     train_op_fc_b = opt_fc_b.apply_gradients(zip(grads_fc_b, fc_b_trainable))
 
-    train_op = tf.group(train_op_conv, train_op_fc_w, train_op_fc_b)
+    train_op = tf.group(increment_step, train_op_conv, train_op_fc_w, train_op_fc_b)
 
     # Set up session
 
     with tf.Session() as sess:
         tf.global_variables_initializer().run()
-        saver = tf.train.Saver(var_list=tf.global_variables(), max_to_keep=10)
+        saver = tf.train.Saver(max_to_keep=3)
         if args.restore_from is not None:
-            loader = tf.train.Saver(var_list=restore_vars)
+            loader = tf.train.Saver()
             load_model(loader, sess, args.restore_from)
 
         threads = tf.train.start_queue_runners(coord=coord, sess=sess)
@@ -183,14 +187,15 @@ def main():
                 feed = [reduced_loss, image_batch, label_batch, pred, total_summary, global_step, train_op]
                 loss_value, images, labels, preds, summary, total_steps, _ = sess.run(feed)
                 summary_writer.add_summary(summary, step)
-                save_model(saver, sess, args.snapshot_dir, total_steps)
+                save_model(saver, sess, args.snapshot_dir, global_step)
             else:
                 feed = [reduced_loss, global_step, train_op]
                 loss_value, total_steps, _ = sess.run(feed)
-            global_step += 1
+
             duration = time.time() - start_time
             print('global step: {:d}, step: {:d} \t loss = {:.3f}, ({:.3f} secs)'
                   .format(total_steps, step, loss_value, duration))
+            print sess.run(learning_rate)
 
         coord.request_stop()
         coord.join(threads)
