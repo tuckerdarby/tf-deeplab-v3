@@ -74,7 +74,7 @@ def save_model(saver, sess, logdir, step):
     if not os.path.exists(logdir):
         os.makedirs(logdir)
     saver.save(sess, checkpoint_path, global_step=step)
-    print('The checkpoint has been created for step {}'.format(sess.run(step)))
+    print('The checkpoint has been created for step {}'.format(step))
 
 
 def main():
@@ -137,11 +137,11 @@ def main():
 
     # Image Summary
     images_summary = tf.py_func(inv_preprocess, [image_batch, args.save_num_images, IMG_MEAN], tf.uint8)
-    preds_summary = tf.py_func(decode_labels, [pred, args.save_num_images, args.num_classes], tf.uint8)
-    labels_summary = tf.py_func(decode_labels, [label_batch, args.save_num_images, args.num_classes], tf.uint8)
+    # preds_summary = tf.py_func(decode_labels, [pred, args.save_num_images, args.num_classes], tf.uint8)
+    # labels_summary = tf.py_func(decode_labels, [label_batch, args.save_num_images, args.num_classes], tf.uint8)
 
     total_summary = tf.summary.image('images',
-                                     tf.concat(axis=2, values=[images_summary, labels_summary, preds_summary]),
+                                     tf.concat(axis=2, values=[images_summary]),
                                      max_outputs=args.save_num_images)
     summary_writer = tf.summary.FileWriter(args.snapshot_dir, graph=tf.get_default_graph())
 
@@ -180,17 +180,17 @@ def main():
             start_time = time.time()
 
             if step % args.save_pred_every == 0:
-                feed = [reduced_loss, image_batch, label_batch, pred, total_summary, train_op]
-                loss_value, images, labels, preds, summary, _ = sess.run(feed)
+                feed = [reduced_loss, image_batch, label_batch, pred, total_summary, global_step, train_op]
+                loss_value, images, labels, preds, summary, total_steps, _ = sess.run(feed)
                 summary_writer.add_summary(summary, step)
-                save_model(saver, sess, args.snapshot_dir, step)
+                save_model(saver, sess, args.snapshot_dir, total_steps)
             else:
-                feed = [reduced_loss, train_op]
-                loss_value, _ = sess.run(feed)
+                feed = [reduced_loss, global_step, train_op]
+                loss_value, total_steps, _ = sess.run(feed)
             global_step += 1
             duration = time.time() - start_time
-            print('step: {:d} \t loss = {:.3f}, ({:.3f} secs)'
-                  .format(step, loss_value, duration))
+            print('global step: {:d}, step: {:d} \t loss = {:.3f}, ({:.3f} secs)'
+                  .format(total_steps, step, loss_value, duration))
 
         coord.request_stop()
         coord.join(threads)

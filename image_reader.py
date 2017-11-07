@@ -39,7 +39,7 @@ def random_crop_and_pad(image, label, crop_height, crop_width, ignore_label=255)
     image_crop = combined_crop[:, :, :last_image_dim]
     label_crop = combined_crop[:, :, last_image_dim:]
     label_crop += ignore_label
-    label_crop = tf.cast(label_crop, tf.uint8)
+    label_crop = tf.cast(label_crop, tf.int64)
 
     # Set static shape to know shape at compile time
     image_crop.set_shape((crop_height, crop_width, 3))

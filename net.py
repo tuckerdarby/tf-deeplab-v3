@@ -16,12 +16,13 @@ class DeepLabResNetModel(object):
             conv = layers.conv2d(self.inbound, 64, 7, 2, activation_fn=None)
             bn = layers.batch_norm(conv, activation_fn=tf.nn.relu, is_training=self.training)
             pool = layers.max_pool2d(bn, 3, 2)
+        block_end = pool
 
         # 2
         ## 2a - Branch 1
-        r2a_b1 = self._a_branch(pool, 256, 1, 1, scope='2ab1')
+        r2a_b1 = self._a_branch(block_end, 256, 1, 1, scope='2ab1')
         ## 2a - Branch 2
-        r2a_block = self._conv_block(pool, (64, 64, 256), (1, 3, 1), (1, 1, 1), scope='2a')
+        r2a_block = self._conv_block(block_end, (64, 64, 256), (1, 3, 1), (1, 1, 1), scope='2a')
         r2a_relu1 = self._add_block(r2a_b1, r2a_block, scope='2a')
         ## 2b - Branch 2
         r2b_block = self._conv_block(r2a_relu1, (64, 64, 256), (1, 3, 1), (1, 1, 1), scope='2b')
@@ -29,10 +30,11 @@ class DeepLabResNetModel(object):
         ## 2c - Branch 2
         r2c_block = self._conv_block(r2b_relu1, (64, 64, 256), (1, 3, 1), (1, 1, 1), scope='2c')
         r2c_relu1 = self._add_block(r2b_relu1, r2c_block, scope='2c')
+        block_end = r2c_relu1
 
         # 3
         ## 3a - Branch 1
-        r3a_b1 = self._a_branch(r2c_relu1, 512, 1, 2, scope='3ab1')
+        r3a_b1 = self._a_branch(block_end, 512, 1, 2, scope='3ab1')
         ## 3a - Branch 2
         r3a_block = self._conv_block(r2c_relu1, (128, 128, 512), (1, 3, 1), (2, 1, 1), scope='3a')
         r3a_relu = self._add_block(r3a_b1, r3a_block, scope='3a')
@@ -45,10 +47,11 @@ class DeepLabResNetModel(object):
         ## 3b3 - Branch 2
         r3b3_block = self._conv_block(r3b2_relu, (128, 128, 512), (1, 3, 1), (1, 1, 1), scope='3b3')
         r3b3_relu = self._add_block(r3b2_relu, r3b3_block, scope='3b3')
+        block_end = r3b3_relu
 
         # 4
         ## 4a - Branch 1
-        r4a_b1 = self._a_branch(r3b3_relu, 1024, 1, 1, scope='4ab1')
+        r4a_b1 = self._a_branch(block_end, 1024, 1, 1, scope='4ab1')
         ## 4a - Branch 2
         r4a_block = self._aconv_block(r4a_b1, (256, 256, 1024), (1, 3, 1), (1, 2, 1), scope='4a')
         r4a_relu = self._add_block(r4a_b1, r4a_block, scope='4a')
@@ -58,10 +61,11 @@ class DeepLabResNetModel(object):
             scope = '4b' + str(i)
             r4b_block = self._aconv_block(r4b_relu, (256, 256, 1024), (1, 3, 1), (1, 2, 1), scope=scope)
             r4b_relu = self._add_block(r4b_relu, r4b_block, scope=scope)
+        block_end = r4b_relu
 
         # 5
         ## 5a - Branch 1
-        r5a_b1 = self._a_branch(r4b_relu, 2048, 1, 1, scope='5ab1')
+        r5a_b1 = self._a_branch(block_end, 2048, 1, 1, scope='5ab1')
         ## 5a - Branch 2
         r5a_block = self._aconv_block(r5a_b1, (512, 512, 2048), (1, 3, 1), (1, 4, 1), scope='5a')
         r5a_relu = self._add_block(r5a_b1, r5a_block, scope='5a')
@@ -71,13 +75,14 @@ class DeepLabResNetModel(object):
         ## 5c - Branch 2
         r5c_block = self._aconv_block(r5b_relu, (512, 512, 2048), (1, 3, 1), (1, 4, 1), scope='5c')
         r5c_relu = self._add_block(r5b_relu, r5c_block, scope='5c')
+        block_end = r5c_relu
 
         # 5 - Atrous 'FCs'
         with tf.variable_scope('fc'):
-            fc_c0 = self._aconv_layer(r5c_relu, num_classes, 3, 6)
-            fc_c1 = self._aconv_layer(r5c_relu, num_classes, 3, 12)
-            fc_c2 = self._aconv_layer(r5c_relu, num_classes, 3, 18)
-            fc_c3 = self._aconv_layer(r5c_relu, num_classes, 3, 24)
+            fc_c0 = self._aconv_layer(block_end, num_classes, 3, 6)
+            fc_c1 = self._aconv_layer(block_end, num_classes, 3, 12)
+            fc_c2 = self._aconv_layer(block_end, num_classes, 3, 18)
+            fc_c3 = self._aconv_layer(block_end, num_classes, 3, 24)
             fc = tf.add(fc_c0, fc_c1)
             fc = tf.add(fc, fc_c2)
             fc = tf.add(fc, fc_c3)
