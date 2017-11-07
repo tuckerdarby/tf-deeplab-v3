@@ -1,10 +1,10 @@
 import numpy as np
 _USER = 'tuck'
+_DATA_LOC = '/home/' + _USER + '/Datasets/VOC2012/'
 
-DATA_LOC = '/home/' + _USER + '/Datasets/VOC2012/'
-DATA_DIRECTORY = DATA_LOC + 'JPEGImages/'
-MASK_DIRECTORY = DATA_LOC + 'SegmentationClassAug/'
-INDEX_FILE = DATA_LOC + 'train_index.txt'
+DATA_DIRECTORY = _DATA_LOC + 'JPEGImages/'
+MASK_DIRECTORY = _DATA_LOC + 'SegmentationClassAug/'
+INDEX_FILE = _DATA_LOC + 'train_index.txt'
 
 # ATROUS_BLOCKS = 22
 ATROUS_BLOCKS = 1
@@ -17,9 +17,11 @@ NUM_CLASSES = 21
 NUM_STEPS = 20001
 POWER = 0.9
 RANDOM_SEED = 1234
-RESTORE_FROM = './deeplab_resnet.ckpt'
+RESTORE_FROM = 'snapshots'
 SAVE_NUM_IMAGES = 2
-SAVE_PRED_EVERY = 1000
+SAVE_PRED_EVERY = 10
+WRITE_EVERY = 25
+WRITE_FILE = 'results.txt'
 SNAPSHOT_DIR = './snapshots/'
 WEIGHT_DECAY = 0.0005
 IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32)

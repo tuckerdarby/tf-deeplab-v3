@@ -193,9 +193,12 @@ def main():
                 loss_value, total_steps, _ = sess.run(feed)
 
             duration = time.time() - start_time
-            print('global step: {:d}, step: {:d} \t loss = {:.3f}, ({:.3f} secs)'
-                  .format(total_steps, step, loss_value, duration))
-            print sess.run(learning_rate)
+            results = 'global step: {:d}, step: {:d} \t loss = {:.3f}, ({:.3f} secs)'\
+                .format(total_steps, step, loss_value, duration)
+            if step % WRITE_EVERY == 0:
+                with open(WRITE_FILE, 'a') as f:
+                    f.write(results + '\n')
+            print(results)
 
         coord.request_stop()
         coord.join(threads)
