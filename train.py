@@ -6,6 +6,8 @@ import time
 
 import tensorflow as tf
 
+
+from net_help import load_model, save_model
 from net import DeepLabResNetModel
 from image_reader import ImageReader
 from utils import decode_labels, prepare_labels, inv_preprocess
@@ -59,25 +61,6 @@ def get_arguments():
     parser.add_argument('--atrous-blocks', type=int, default=ATROUS_BLOCKS,
                         help='Number of continuous atrous blocks to link')
     return parser.parse_args()
-
-
-def load_model(loader, sess, ckpt_path):
-    checkpoint = tf.train.get_checkpoint_state(ckpt_path)
-    if checkpoint and checkpoint.model_checkpoint_path:
-        print checkpoint.model_checkpoint_path
-        loader.restore(sess, checkpoint.model_checkpoint_path)
-        print("Restored model parameters from {}".format(ckpt_path))
-    else:
-        print 'Did not load model'
-
-
-def save_model(saver, sess, logdir, global_step):
-    model_name = 'model.ckpt'
-    checkpoint_path = os.path.join(logdir, model_name)
-    if not os.path.exists(logdir):
-        os.makedirs(logdir)
-    saver.save(sess, checkpoint_path, global_step=global_step)
-    print('The checkpoint has been created for step {}'.format(sess.run(global_step)))
 
 
 def main():
@@ -140,11 +123,11 @@ def main():
 
     # Image Summary
     images_summary = tf.py_func(inv_preprocess, [image_batch, args.save_num_images, IMG_MEAN], tf.uint8)
-    # preds_summary = tf.py_func(decode_labels, [pred, args.save_num_images, args.num_classes], tf.uint8)
-    # labels_summary = tf.py_func(decode_labels, [label_batch, args.save_num_images, args.num_classes], tf.uint8)
+    preds_summary = tf.py_func(decode_labels, [pred, args.save_num_images, args.num_classes], tf.uint8)
+    labels_summary = tf.py_func(decode_labels, [label_batch, args.save_num_images, args.num_classes], tf.uint8)
 
     total_summary = tf.summary.image('images',
-                                     tf.concat(axis=2, values=[images_summary]),
+                                     tf.concat(axis=2, values=[images_summary, preds_summary, labels_summary]),
                                      max_outputs=args.save_num_images)
     summary_writer = tf.summary.FileWriter(args.snapshot_dir, graph=tf.get_default_graph())
 

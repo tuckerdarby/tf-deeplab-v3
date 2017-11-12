@@ -23,5 +23,6 @@ SAVE_PRED_EVERY = 10
 WRITE_EVERY = 25
 WRITE_FILE = 'results.txt'
 SNAPSHOT_DIR = './snapshots/'
+SAVE_DIR = './inferenced/'
 WEIGHT_DECAY = 0.0005
 IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32)

@@ -20,7 +20,7 @@ def decode_labels(mask, num_images=1, num_classes=21):
     batch_size, height, width, channels = mask.shape
     assert(batch_size >= num_images),\
         'Batch size %d should be greater or equal than number of images to save %d' % (batch_size, num_images)
-    outputs = np.zeros((num_images, height, width, 3), dtype=tf.uint8)
+    outputs = np.zeros((num_images, height, width, 3), dtype=np.uint8)
     for i in range(num_images):
         image = Image.new('RGB', (len(mask[i, 0]), len(mask[i])))
         pixels = image.load()
