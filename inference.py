@@ -42,7 +42,7 @@ def main():
     img -= IMG_MEAN
 
     # Create Network
-    net = DeepLabResNetModel(tf.expand_dims(img, dim=0), ModeKeys.TRAIN, args, args.atrous_blocks)
+    net = DeepLabResNetModel(tf.expand_dims(img, dim=0), ModeKeys.TRAIN, args.num_classes, args.atrous_blocks)
 
     # Predictions
     raw_output = net.output
