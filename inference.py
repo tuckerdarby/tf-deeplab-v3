@@ -23,6 +23,8 @@ def get_arguments():
                         help="Path to image file")
     parser.add_argument("--model-weights", type=str, default=RESTORE_FROM,
                         help="Path to the file with model weights")
+    parser.add_argument("--atrous-blocks", type=int, default=ATROUS_BLOCKS,
+                        help="Number of atrous blocks for the net")
     parser.add_argument("--num-classes", type=int, default=NUM_CLASSES)
     parser.add_argument("--save-dir", type=str, default=SAVE_DIR,
                         help="Where to saved inferenced image")
@@ -40,7 +42,7 @@ def main():
     img -= IMG_MEAN
 
     # Create Network
-    net = DeepLabResNetModel(tf.expand_dims(img, dim=0), ModeKeys.TRAIN, args.num_classes)
+    net = DeepLabResNetModel(tf.expand_dims(img, dim=0), ModeKeys.TRAIN, args, args.atrous_blocks)
 
     # Predictions
     raw_output = net.output
