@@ -19,7 +19,7 @@ from defaults import *
 
 def get_arguments():
     parser = argparse.ArgumentParser(description="DeepLab Inference")
-    parser.add_argument('img_path',
+    parser.add_argument('--img-path', default='./example/scene.jpg',
                         help="Path to image file")
     parser.add_argument("--model-weights", type=str, default=RESTORE_FROM,
                         help="Path to the file with model weights")

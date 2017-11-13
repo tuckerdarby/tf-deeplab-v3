@@ -14,8 +14,8 @@ def load_model(loader, sess, ckpt_path):
 
 
 def save_model(saver, sess, logdir, global_step):
-    model_name = 'model.ckpt'
-    checkpoint_path = os.path.join(logdir, model_name)
+    checkpoint_file = 'model.ckpt'
+    checkpoint_path = os.path.join(logdir, checkpoint_file)
     if not os.path.exists(logdir):
         os.makedirs(logdir)
     saver.save(sess, checkpoint_path, global_step=global_step)

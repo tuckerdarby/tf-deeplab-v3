@@ -54,6 +54,8 @@ def get_arguments():
                         help='Number of images to save')
     parser.add_argument('--save-pred-every', type=int, default=SAVE_PRED_EVERY,
                         help='When to save summaries and checkpoints')
+    parser.add_argument('--model-name', type=str, default=MODEL_DIR,
+                        help='Where to save the model checkpoints')
     parser.add_argument('--snapshot-dir', type=str, default=SNAPSHOT_DIR,
                         help='Where to save snapshots of the model')
     parser.add_argument('--weight-decay', type=float, default=WEIGHT_DECAY,
@@ -122,6 +124,7 @@ def main():
     pred = tf.expand_dims(raw_output_up, dim=3)
 
     # Image Summary
+    model_dir = args.restore_from + args.model_name
     images_summary = tf.py_func(inv_preprocess, [image_batch, args.save_num_images, IMG_MEAN], tf.uint8)
     preds_summary = tf.py_func(decode_labels, [pred, args.save_num_images, args.num_classes], tf.uint8)
     labels_summary = tf.py_func(decode_labels, [label_batch, args.save_num_images, args.num_classes], tf.uint8)
@@ -129,7 +132,7 @@ def main():
     total_summary = tf.summary.image('images',
                                      tf.concat(axis=2, values=[images_summary, preds_summary, labels_summary]),
                                      max_outputs=args.save_num_images)
-    summary_writer = tf.summary.FileWriter(args.snapshot_dir, graph=tf.get_default_graph())
+    summary_writer = tf.summary.FileWriter(model_dir, graph=tf.get_default_graph())
 
     # Define loss and optimization parameters
     base_lr = tf.constant(args.learning_rate, tf.float64)
@@ -159,7 +162,7 @@ def main():
         saver = tf.train.Saver(max_to_keep=3)
         if args.restore_from is not None:
             loader = tf.train.Saver()
-            load_model(loader, sess, args.restore_from)
+            load_model(loader, sess, model_dir)
 
         threads = tf.train.start_queue_runners(coord=coord, sess=sess)
 
@@ -169,8 +172,8 @@ def main():
             if step % args.save_pred_every == 0:
                 feed = [reduced_loss, image_batch, label_batch, pred, total_summary, global_step, train_op]
                 loss_value, images, labels, preds, summary, total_steps, _ = sess.run(feed)
-                summary_writer.add_summary(summary, step)
-                save_model(saver, sess, args.snapshot_dir, global_step)
+                summary_writer.add_summary(summary, total_steps)
+                save_model(saver, sess, model_dir, global_step)
             else:
                 feed = [reduced_loss, global_step, train_op]
                 loss_value, total_steps, _ = sess.run(feed)
