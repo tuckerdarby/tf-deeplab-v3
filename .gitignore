@@ -6,3 +6,9 @@ snapshots/
 
 # pyc
 *.pyc
+
+# examples
+example/
+
+# inferenced
+inferenced/

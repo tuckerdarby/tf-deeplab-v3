@@ -7,8 +7,8 @@ import time
 import tensorflow as tf
 
 
-from net_help import load_model, save_model
-from net import DeepLabResNetModel
+from net_help import load_model, save_model, variable_summaries
+from net_small import DeepLabResNetModel
 from image_reader import ImageReader
 from utils import decode_labels, prepare_labels, inv_preprocess
 from defaults import *
@@ -48,8 +48,6 @@ def get_arguments():
                         help='Whether to randomly scale the inputs during the training')
     parser.add_argument('--random-seed', type=int, default=RANDOM_SEED,
                         help='Random seed to have reproducible results')
-    parser.add_argument('--restore-from', type=str, default=RESTORE_FROM,
-                        help='Where restore model parameters are from')
     parser.add_argument('--save-num-images', type=int, default=SAVE_NUM_IMAGES,
                         help='Number of images to save')
     parser.add_argument('--save-pred-every', type=int, default=SAVE_PRED_EVERY,
@@ -117,22 +115,12 @@ def main():
     loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=prediction, labels=gt)
     l2_losses = [args.weight_decay * tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'weights' in v.name]
     reduced_loss = tf.reduce_mean(loss) + tf.add_n(l2_losses)
+    variable_summaries(reduced_loss, name='loss')
 
     # Processed predictions: for visualization
     raw_output_up = tf.image.resize_bilinear(raw_output, tf.shape(image_batch)[1:3,])
     raw_output_up = tf.argmax(raw_output_up, dimension=3)
     pred = tf.expand_dims(raw_output_up, dim=3)
-
-    # Image Summary
-    model_dir = args.restore_from + args.model_name
-    images_summary = tf.py_func(inv_preprocess, [image_batch, args.save_num_images, IMG_MEAN], tf.uint8)
-    preds_summary = tf.py_func(decode_labels, [pred, args.save_num_images, args.num_classes], tf.uint8)
-    labels_summary = tf.py_func(decode_labels, [label_batch, args.save_num_images, args.num_classes], tf.uint8)
-
-    total_summary = tf.summary.image('images',
-                                     tf.concat(axis=2, values=[images_summary, preds_summary, labels_summary]),
-                                     max_outputs=args.save_num_images)
-    summary_writer = tf.summary.FileWriter(model_dir, graph=tf.get_default_graph())
 
     # Define loss and optimization parameters
     base_lr = tf.constant(args.learning_rate, tf.float64)
@@ -155,16 +143,43 @@ def main():
 
     train_op = tf.group(increment_step, train_op_conv, train_op_fc_w, train_op_fc_b)
 
+    initial_learning_rate = 1e-2
+    learning_rate = tf.train.exponential_decay(initial_learning_rate, global_step, 300, 0.96)
+    adam = tf.train.AdamOptimizer(learning_rate).minimize(reduced_loss, global_step=global_step)
+
+    # Image Summary
+    model_dir = args.snapshot_dir + args.model_name
+
+    images_summary = tf.py_func(inv_preprocess, [image_batch, args.save_num_images, IMG_MEAN], tf.uint8)
+    preds_summary = tf.py_func(decode_labels, [pred, args.save_num_images, args.num_classes], tf.uint8)
+    labels_summary = tf.py_func(decode_labels, [label_batch, args.save_num_images, args.num_classes], tf.uint8)
+
+    image_summaries = [images_summary, preds_summary, labels_summary]
+    image_summary = tf.summary.image('images',
+                                     tf.concat(axis=2, values=image_summaries),
+                                     max_outputs=args.save_num_images)
+
+    # Variable Summary
+    variable_summaries(fc_w_trainable, 'fc_w')
+    variable_summaries(fc_b_trainable, 'fc_b')
+    variable_summaries(learning_rate, 'learning_rate')
+    # variable_summaries(net.weights, 'aconv_w')
+    # variable_summaries(net.biases, 'aconv_b')
+
+    total_summary = tf.summary.merge_all()
+    summary_writer = tf.summary.FileWriter(model_dir, graph=tf.get_default_graph())
+
     # Set up session
 
     with tf.Session() as sess:
         tf.global_variables_initializer().run()
         saver = tf.train.Saver(max_to_keep=3)
-        if args.restore_from is not None:
+        if args.snapshot_dir is not None and args.model_name is not None and os.path.exists(model_dir):
             loader = tf.train.Saver()
             load_model(loader, sess, model_dir)
 
         threads = tf.train.start_queue_runners(coord=coord, sess=sess)
+        # train_op = adam
 
         for step in range(args.num_steps):
             start_time = time.time()
