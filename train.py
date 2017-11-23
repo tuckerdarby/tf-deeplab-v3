@@ -127,10 +127,11 @@ def main():
     global_step = tf.Variable(0, trainable=False, name='global_step')
     increment_step = tf.assign(global_step, global_step + 1)
     learning_rate = tf.scalar_mul(base_lr, tf.pow((1 - global_step / args.num_steps), args.power))
+    learning_rate = tf.maximum(learning_rate, 8e-7)
 
     opt_conv = tf.train.MomentumOptimizer(learning_rate, args.momentum)
-    opt_fc_w = tf.train.MomentumOptimizer(learning_rate * 10.0, args.momentum)
-    opt_fc_b = tf.train.MomentumOptimizer(learning_rate * 20.0, args.momentum)
+    opt_fc_w = tf.train.MomentumOptimizer(learning_rate * 5.0, args.momentum)
+    opt_fc_b = tf.train.MomentumOptimizer(learning_rate * 10.0, args.momentum)
 
     grads = tf.gradients(reduced_loss, conv_trainable + fc_w_trainable + fc_b_trainable)
     grads_conv = grads[:len(conv_trainable)]
@@ -143,9 +144,9 @@ def main():
 
     train_op = tf.group(increment_step, train_op_conv, train_op_fc_w, train_op_fc_b)
 
-    initial_learning_rate = 1e-2
-    learning_rate = tf.train.exponential_decay(initial_learning_rate, global_step, 300, 0.96)
-    adam = tf.train.AdamOptimizer(learning_rate).minimize(reduced_loss, global_step=global_step)
+    # initial_learning_rate = 1e-2
+    # learning_rate = tf.train.exponential_decay(initial_learning_rate, global_step, 300, 0.96)
+    # adam = tf.train.AdamOptimizer(learning_rate).minimize(reduced_loss, global_step=global_step)
 
     # Image Summary
     model_dir = args.snapshot_dir + args.model_name
